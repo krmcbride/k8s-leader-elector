@@ -37,12 +37,6 @@ func NewSimpleElection(electionID, id string, callback func(leader string), clie
 
 // NewElection creates a Lease-backed election. electionID is the Lease name and id should be unique per participant.
 func NewElection(electionID, id, namespace string, ttl time.Duration, callback func(leader string), client kubernetes.Interface) (*leaderelection.LeaderElector, error) {
-	leader, err := getCurrentLeader(context.Background(), electionID, namespace, client)
-	if err != nil {
-		return nil, err
-	}
-	callback(leader)
-
 	lock := &resourcelock.LeaseLock{
 		LeaseMeta: metav1.ObjectMeta{
 			Name:      electionID,

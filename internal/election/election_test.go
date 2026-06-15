@@ -10,7 +10,7 @@ import (
 	"k8s.io/client-go/kubernetes/fake"
 )
 
-func TestNewElectionReportsExistingLeaseLeader(t *testing.T) {
+func TestNewElectionDoesNotContactAPIOnStartup(t *testing.T) {
 	holder := "pod-a"
 	client := fake.NewSimpleClientset(&coordinationv1.Lease{
 		ObjectMeta: metav1.ObjectMeta{Name: "example", Namespace: metav1.NamespaceDefault},
@@ -27,8 +27,8 @@ func TestNewElectionReportsExistingLeaseLeader(t *testing.T) {
 		t.Fatalf("NewElection returned error: %v", err)
 	}
 
-	if len(reported) != 1 || reported[0] != holder {
-		t.Fatalf("reported leaders = %#v, want [%q]", reported, holder)
+	if len(reported) != 0 {
+		t.Fatalf("reported leaders = %#v, want no startup callback", reported)
 	}
 }
 
