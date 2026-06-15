@@ -1,0 +1,85 @@
+name: Publish OCI image
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Image tag to publish. Defaults to the current ref name, or the short SHA for branch refs.
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: publish-image-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  ghcr:
+    name: Publish to GHCR
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+
+      - name: Build image tarball
+        run: nix build .#image --print-build-logs
+
+      - name: Prepare image for crane
+        id: tarball
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          image_tar="${RUNNER_TEMP}/k8s-leader-elector.tar"
+          gzip -dc result > "${image_tar}"
+          printf 'path=%s\n' "${image_tar}" >> "${GITHUB_OUTPUT}"
+
+      - name: Compute image tags
+        id: meta
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          image="ghcr.io/${GITHUB_REPOSITORY,,}"
+          input_tag="${{ inputs.tag }}"
+
+          if [[ -n "${input_tag}" ]]; then
+            primary_tag="${input_tag}"
+          elif [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            primary_tag="${GITHUB_REF_NAME}"
+          else
+            primary_tag="sha-${GITHUB_SHA::12}"
+          fi
+
+          {
+            printf 'image=%s\n' "${image}"
+            printf 'tag=%s\n' "${primary_tag}"
+          } >> "${GITHUB_OUTPUT}"
+
+      - name: Login to GHCR
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          printf '%s' "${GITHUB_TOKEN}" | nix develop --command crane auth login ghcr.io \
+            --username "${GITHUB_ACTOR}" \
+            --password-stdin
+
+      - name: Push image
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          nix develop --command crane push "${{ steps.tarball.outputs.path }}" \
+            "${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.tag }}"

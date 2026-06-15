@@ -94,6 +94,7 @@
             pkgs.gopls
             pkgs.gotools
             pkgs.golangci-lint
+            pkgs.go-containerregistry
             pkgs.kubectl
             pkgs.ko
             pkgs.docker-client
