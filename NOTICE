@@ -1,0 +1,12 @@
+k8s-leader-elector
+
+This project includes code and behavior derived from Kubernetes contrib/election.
+
+Original source:
+https://github.com/kubernetes-retired/contrib/tree/master/election
+
+Copyright 2015 The Kubernetes Authors.
+
+The original Kubernetes contrib/election code is licensed under the Apache
+License, Version 2.0. This project is also licensed under the Apache License,
+Version 2.0.
